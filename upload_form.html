@@ -1,15 +1,85 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
-<html xmlns="http://www.w3.org/1999/xhtml"> 
-<head> 
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/> 
-<title>Tornado Upload Application</title>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Tornado Upload Application</title>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.bootcss.com/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.bootcss.com/webuploader/0.1.1/webuploader.css">
+
 </head>
 <body>
-<p><h1>Tornado Upload App</h1></p>
+<p>
+<h1>Tornado Upload App</h1></p>
 <form enctype="multipart/form-data" action="/upload" method="post">
-File: <input type="file" name="file1" />
-<br />
-<br />
-<input type="submit" value="upload" />
+    File: <input type="file" name="file1"/>
+    <br/>
+    <br/>
+    <input type="submit" value="upload"/>
 </form>
+<div style="margin:50px 0 0 50px;">
+    <div id="picker" style="float:left;">请选择</div>
+    <div id="progress" class="progress" style="width:500px;float:left;margin:10px 0 0 20px;">
+        <div class="progress-bar progress-bar-striped active" role="progressbar" style="width:0%;"></div>
+    </div>
+    <div style="clear:both;"></div>
+</div>
+<script type="text/javascript" src="https://cdn.bootcss.com/jquery/3.5.0/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdn.bootcss.com/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://cdn.bootcss.com/webuploader/0.1.1/webuploader.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var task_id = WebUploader.Base.guid(); // 产生文件唯一标识符task_id
+        var uploader = WebUploader.create({
+            swf: 'https://cdn.bootcss.com/webuploader/0.1.1/Uploader.swf',
+            server: '/bigFileUpload', // 上传分片地址
+            pick: '#picker',
+            auto: true,
+            chunked: true,
+            chunkSize: 20 * 1024 * 1024,
+            chunkRetry: 3,
+            threads: 1,
+            duplicate: true,
+            formData: { // 上传分片的http请求中一同携带的数据
+                task_id: task_id,
+            },
+        });
+
+        uploader.on('startUpload', function () { // 开始上传时，调用该方法
+            $('#progress').show();
+            $('.progress-bar').css('width', '0%');
+            $('.progress-bar').text('0%');
+            $('.progress-bar').removeClass('progress-bar-danger progress-bar-success');
+            $('.progress-bar').addClass('active progress-bar-striped');
+        });
+
+        uploader.on('uploadProgress', function (file, percentage) { // 一个分片上传成功后，调用该方法
+            $('.progress-bar').css('width', percentage * 100 - 1 + '%');
+            $('.progress-bar').text(Math.floor(percentage * 100 - 1) + '%');
+        });
+
+        uploader.on('uploadSuccess', function (file) { // 整个文件的所有分片都上传成功后，调用该方法
+            var data = {'task_id': task_id, 'filename': file.source['name']};
+            $.get('upload_success', data);
+            $('.progress-bar').css('width', '100%');
+            $('.progress-bar').text('100%');
+            $('.progress-bar').addClass('progress-bar-success');
+            $('.progress-bar').text('上传完成');
+        });
+
+        uploader.on('uploadError', function (file) { // 上传过程中发生异常，调用该方法
+            $('.progress-bar').css('width', '100%');
+            $('.progress-bar').text('100%');
+            $('.progress-bar').addClass('progress-bar-danger');
+            $('.progress-bar').text('上传失败');
+        });
+
+        uploader.on('uploadComplete', function (file) { // 上传结束，无论文件最终是否上传成功，该方法都会被调用
+            $('.progress-bar').removeClass('active progress-bar-striped');
+        });
+
+        $('#progress').hide();
+    });
+</script>
+</body>
 
